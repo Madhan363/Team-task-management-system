@@ -1,231 +1,214 @@
 import 'dotenv/config';
-import bcrypt from 'bcryptjs';
 import cookieParser from 'cookie-parser';
 import express from 'express';
-import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
-import { User, Task, serializeUser, serializeTask } from './models.js';
+
+import authRoutes from './routes/authRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import departmentRoutes from './routes/departmentRoutes.js';
+import taskRoutes from './routes/taskRoutes.js';
+import dashboardRoutes from './routes/dashboardRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
+import assistantRoutes from './routes/assistantRoutes.js';
+import auditLogRoutes from './routes/auditLogRoutes.js';
+import meetingRoutes from './routes/meetingRoutes.js';
+import searchRoutes from './routes/searchRoutes.js';
+import activityRoutes from './routes/activityRoutes.js';
+import projectRoutes from './routes/projectRoutes.js';
+import adminRoutes from './adminRoutes.js';
+import teamRoutes from './teamRoutes.js';
+
+import { requireUser, requireAdmin } from './middleware/auth.js';
+import { createFallbackSuggestions } from './goalSuggestions.js';
+import { sendMeetingReminders } from './controllers/meetingController.js';
+import { closeExpiredActivitySessions } from './services/activityTracking.js';
 
 const { MONGODB_URI, JWT_SECRET } = process.env;
 const PORT = Number(process.env.PORT || 4000);
-const COOKIE_NAME = 'todo_session';
-const SESSION_DURATION_SECONDS = 7 * 24 * 60 * 60;
+const SERVER_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
+const DIST_DIRECTORY = path.resolve(SERVER_DIRECTORY, '../dist');
+const FRONTEND_ENTRY = path.join(DIST_DIRECTORY, 'index.html');
 
 if (!MONGODB_URI || !JWT_SECRET || JWT_SECRET.length < 32) {
   throw new Error('Set MONGODB_URI and a JWT_SECRET of at least 32 characters in .env.');
 }
 
 const app = express();
-app.use(express.json({ limit: '20kb' }));
+
+app.use('/api/auth/profile', express.json({ limit: '2mb' }));
+app.use('/api/tasks', express.json({ limit: '2mb' }));
+app.use('/api/projects', express.json({ limit: '7mb' }));
+app.use(express.json({ limit: '50kb' }));
 app.use(cookieParser());
 
-function setSessionCookie(response, user) {
-  const token = jwt.sign({ sub: user._id.toString() }, JWT_SECRET, {
-    expiresIn: SESSION_DURATION_SECONDS,
-  });
-  response.cookie(COOKIE_NAME, token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: SESSION_DURATION_SECONDS * 1000,
-    path: '/',
-  });
-}
-
-async function requireUser(request, response, next) {
-  try {
-    const token = request.cookies[COOKIE_NAME];
-    if (!token) {
-      response.status(401).json({ error: 'Please sign in to continue.' });
-      return;
-    }
-    const payload = jwt.verify(token, JWT_SECRET);
-    const user = await User.findById(payload.sub);
-    if (!user) {
-      response.status(401).json({ error: 'Session is no longer valid. Please sign in again.' });
-      return;
-    }
-    request.user = user;
-    next();
-  } catch (error) {
-    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
-      response.status(401).json({ error: 'Session expired. Please sign in again.' });
-      return;
-    }
-    next(error);
-  }
-}
-
+// Health check
 app.get('/api/health', (_request, response) => {
   response.json({
     status: 'ok',
     database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    timestamp: new Date().toISOString(),
   });
 });
 
-app.post('/api/auth/register', async (request, response, next) => {
-  try {
-    const name = typeof request.body.name === 'string' ? request.body.name.trim() : '';
-    const username = typeof request.body.username === 'string'
-      ? request.body.username.trim().toLowerCase()
-      : '';
-    const password = typeof request.body.password === 'string' ? request.body.password : '';
-    const theme = typeof request.body.theme === 'string' ? request.body.theme : 'aurora';
+// Standard REST endpoints for TaskFlow
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/departments', departmentRoutes);
+app.use('/api/tasks', taskRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/assistant', assistantRoutes);
+app.use('/api/audit-logs', auditLogRoutes);
+app.use('/api/meetings', meetingRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/activity', activityRoutes);
+app.use('/api/projects', projectRoutes);
 
-    if (!name || name.length > 80) {
-      response.status(400).json({ error: 'Display name is required and must be under 80 characters.' });
-      return;
-    }
-    if (!/^[a-z0-9_]{3,30}$/.test(username)) {
-      response.status(400).json({ error: 'Username must be 3–30 characters using letters, numbers, or underscores.' });
-      return;
-    }
-    if (password.length < 4 || password.length > 100) {
-      response.status(400).json({ error: 'Password must be at least 4 characters.' });
-      return;
-    }
+// Legacy and backwards-compatible routes for existing smoke tests and modules
+app.use('/api/team', requireUser, teamRoutes);
+app.use('/api/admin', requireUser, requireAdmin, adminRoutes);
 
-    const passwordHash = await bcrypt.hash(password, 12);
-    const user = await User.create({ name, username, passwordHash, theme });
-    await Task.create({
-      user: user._id,
-      text: `Welcome, ${user.name}! Start organizing your private tasks 🌟`,
+// AI Assistant endpoint
+app.post('/api/assistant/suggestions', requireUser, async (request, response) => {
+  const goal = typeof request.body?.goal === 'string' ? request.body.goal.trim() : '';
+  if (goal.length < 3 || goal.length > 500) {
+    response.status(400).json({ error: 'Enter a goal between 3 and 500 characters.' });
+    return;
+  }
+  if (!process.env.OPENAI_API_KEY) {
+    response.json({
+      tasks: createFallbackSuggestions(goal),
+      source: 'fallback',
     });
-    setSessionCookie(response, user);
-    response.status(201).json({ user: serializeUser(user) });
-  } catch (error) {
-    if (error.code === 11000) {
-      response.status(409).json({ error: 'Username is already taken. Please choose another.' });
-      return;
-    }
-    next(error);
+    return;
   }
-});
 
-app.post('/api/auth/login', async (request, response, next) => {
   try {
-    const username = typeof request.body.username === 'string'
-      ? request.body.username.trim().toLowerCase()
-      : '';
-    const password = typeof request.body.password === 'string' ? request.body.password : '';
-    const user = await User.findOne({ username });
-
-    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-      response.status(401).json({ error: 'Invalid username or password.' });
-      return;
-    }
-
-    setSessionCookie(response, user);
-    response.json({ user: serializeUser(user) });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get('/api/auth/session', requireUser, (request, response) => {
-  response.json({ user: serializeUser(request.user) });
-});
-
-app.post('/api/auth/logout', (_request, response) => {
-  response.clearCookie(COOKIE_NAME, { httpOnly: true, sameSite: 'lax', path: '/' });
-  response.status(204).end();
-});
-
-app.get('/api/tasks', requireUser, async (request, response, next) => {
-  try {
-    const tasks = await Task.find({ user: request.user._id }).sort({ createdAt: -1 });
-    response.json({ tasks: tasks.map(serializeTask) });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post('/api/tasks', requireUser, async (request, response, next) => {
-  try {
-    const text = typeof request.body.text === 'string' ? request.body.text.trim() : '';
-    if (!text || text.length > 500) {
-      response.status(400).json({ error: 'Task text is required and must be under 500 characters.' });
-      return;
-    }
-    const task = await Task.create({ user: request.user._id, text });
-    response.status(201).json({ task: serializeTask(task) });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.patch('/api/tasks/:id', requireUser, async (request, response, next) => {
-  try {
-    if (typeof request.body.completed !== 'boolean') {
-      response.status(400).json({ error: 'Task completion status must be true or false.' });
-      return;
-    }
-    const task = await Task.findOneAndUpdate(
-      { _id: request.params.id, user: request.user._id },
-      { completed: request.body.completed },
-      { new: true, runValidators: true },
-    );
-    if (!task) {
-      response.status(404).json({ error: 'Task not found.' });
-      return;
-    }
-    response.json({ task: serializeTask(task) });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.delete('/api/tasks/completed', requireUser, async (request, response, next) => {
-  try {
-    await Task.deleteMany({ user: request.user._id, completed: true });
-    response.status(204).end();
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.delete('/api/tasks/:id', requireUser, async (request, response, next) => {
-  try {
-    const task = await Task.findOneAndDelete({
-      _id: request.params.id,
-      user: request.user._id,
+    const upstream = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        max_output_tokens: 1200,
+        input: [
+          {
+            role: 'developer',
+            content: 'Break the user’s goal into 3 to 6 concrete, manageable next steps. Return a JSON object with a "tasks" array. Each task must include an actionable title under 120 characters, a concise description, a priority (low, medium, or high), and an optional category.',
+          },
+          { role: 'user', content: goal },
+        ],
+        text: { format: { type: 'json_object' } },
+      }),
+      signal: AbortSignal.timeout(15_000),
     });
-    if (!task) {
-      response.status(404).json({ error: 'Task not found.' });
+
+    if (!upstream.ok) {
+      console.error(`AI goal breakdown request failed with HTTP ${upstream.status}.`);
+      response.json({
+        tasks: createFallbackSuggestions(goal),
+        source: 'fallback',
+      });
       return;
     }
-    response.status(204).end();
+
+    const payload = await upstream.json();
+    const responseText = payload.output_text || (payload.output || [])
+      .flatMap((item) => item.content || [])
+      .filter((item) => item.type === 'output_text' && typeof item.text === 'string')
+      .map((item) => item.text)
+      .join('');
+    const parsedResponse = responseText ? JSON.parse(responseText) : payload;
+    const tasks = Array.isArray(parsedResponse?.tasks)
+      ? parsedResponse.tasks.filter((task) => (
+        task && typeof task.title === 'string' && task.title.trim()
+      ))
+      : [];
+    if (!tasks.length) {
+      console.error('AI goal breakdown returned no valid tasks; using fallback suggestions.');
+      response.json({
+        tasks: createFallbackSuggestions(goal),
+        source: 'fallback',
+      });
+      return;
+    }
+    response.json({ tasks, source: 'openai' });
   } catch (error) {
-    next(error);
+    console.error('AI assistant error, using fallback:', error);
+    response.json({
+      tasks: createFallbackSuggestions(goal),
+      source: 'fallback',
+    });
   }
 });
 
+// 404 for unmatched API routes
+app.use('/api', (_request, response) => {
+  response.status(404).json({ error: 'API endpoint not found.' });
+});
+
+// Static assets
+app.use(express.static(DIST_DIRECTORY));
+
+// SPA catch-all fallback
+app.get('/{*path}', (request, response, next) => {
+  if (!request.accepts('html')) {
+    next();
+    return;
+  }
+  if (!existsSync(FRONTEND_ENTRY)) {
+    response
+      .status(503)
+      .type('text/plain')
+      .send('Frontend build not found. Run "npm run build", then restart the server.');
+    return;
+  }
+  response.sendFile(FRONTEND_ENTRY);
+});
+
+app.use((_request, response) => {
+  response.status(404).type('text/plain').send('Not found.');
+});
+
+// Global error handler
 app.use((error, _request, response, next) => {
-  void next;
-  console.error('API request failed:', error);
-  if (error.name === 'ValidationError' || error.name === 'CastError') {
-    response.status(400).json({ error: 'The request contains invalid data.' });
+  console.error('API request error:', error);
+  if (response.headersSent) {
+    next(error);
+    return;
+  }
+  if (error.type === 'entity.too.large') {
+    response.status(413).json({ error: 'Payload too large.' });
     return;
   }
   response.status(500).json({ error: 'The server could not complete the request.' });
 });
 
-const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-app.use(express.static(path.join(projectRoot, 'dist')));
-app.use((request, response, next) => {
-  if (request.path.startsWith('/api/') || request.method !== 'GET') {
-    next();
-    return;
-  }
-  response.sendFile(path.join(projectRoot, 'dist', 'index.html'), (error) => {
-    if (error) next(error);
-  });
-});
-
 await mongoose.connect(MONGODB_URI);
+const activitySessionCleanupInterval = setInterval(() => {
+  closeExpiredActivitySessions().catch((error) => {
+    console.error('Failed to close expired activity sessions:', error);
+  });
+}, 60_000);
+activitySessionCleanupInterval.unref();
+closeExpiredActivitySessions().catch((error) => {
+  console.error('Failed to close expired activity sessions:', error);
+});
+const reminderInterval = setInterval(() => {
+  sendMeetingReminders().catch((error) => {
+    console.error('Failed to send meeting reminders:', error);
+  });
+}, 60_000);
+reminderInterval.unref();
+sendMeetingReminders().catch((error) => {
+  console.error('Failed to send meeting reminders:', error);
+});
 app.listen(PORT, () => {
-  console.log(`Todo app API listening on http://localhost:${PORT}`);
+  console.log(`TaskFlow Server listening on http://localhost:${PORT}`);
 });

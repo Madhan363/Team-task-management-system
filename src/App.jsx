@@ -1,323 +1,321 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from './api';
-import ProfileDirectory from './components/ProfileDirectory';
-import TodoTour from './components/TodoTour';
-import TodoForm from './components/TodoForm';
-import TodoFilter from './components/TodoFilter';
-import TodoList from './components/TodoList';
+
+import DashboardLayout from './layouts/DashboardLayout';
+import WelcomePage from './components/WelcomePage';
+import LoginPage from './pages/auth/LoginPage';
+import AdminLoginPage from './pages/auth/AdminLoginPage';
+
+import AdminDashboardPage from './pages/admin/AdminDashboardPage';
+import AdminUserManagerPage from './pages/admin/AdminUserManagerPage';
+import AdminDepartmentManagerPage from './pages/admin/AdminDepartmentManagerPage';
+import AdminAuditLogsPage from './pages/admin/AdminAuditLogsPage';
+import AdminProjectsPage from './pages/admin/AdminProjectsPage';
+import MeetingsPage from './pages/common/MeetingsPage';
+import CalendarPage from './pages/common/CalendarPage';
+import GlobalSearchPage from './pages/common/GlobalSearchPage';
+import ReportsAnalyticsPage from './pages/common/ReportsAnalyticsPage';
+import ActivityTimePage from './pages/common/ActivityTimePage';
+
+import LeaderDashboardPage from './pages/teamLeader/LeaderDashboardPage';
+import LeaderTeamManagementPage from './pages/teamLeader/LeaderTeamManagementPage';
+import LeaderAssignTaskPage from './pages/teamLeader/LeaderAssignTaskPage';
+import LeaderTaskTrackingPage from './pages/teamLeader/LeaderTaskTrackingPage';
+import LeaderCollaborationPage from './pages/teamLeader/LeaderCollaborationPage';
+
+import MemberDashboardPage from './pages/teamMember/MemberDashboardPage';
+import MemberTodoListPage from './pages/teamMember/MemberTodoListPage';
+import MemberAIAssistantPage from './pages/teamMember/MemberAIAssistantPage';
+import MemberMyTasksPage from './pages/teamMember/MemberMyTasksPage';
+import MemberAcknowledgmentsPage from './pages/teamMember/MemberAcknowledgmentsPage';
+import MemberTaskHistoryPage from './pages/teamMember/MemberTaskHistoryPage';
+import MemberCollaborationPage from './pages/teamMember/MemberCollaborationPage';
+
+import ProfilePage from './pages/common/ProfilePage';
+import ThemeToggle from './components/ThemeToggle';
+
 import './App.css';
+import './styles/taskflow.css';
+import './styles/meetings.css';
+
+const THEME_STORAGE_KEY = 'taskflow-theme-preference';
+
+function readSavedTheme() {
+  try {
+    return localStorage.getItem(THEME_STORAGE_KEY) === 'light' ? 'light' : 'dark';
+  } catch (error) {
+    console.error('Failed to read the saved theme:', error);
+    return 'dark';
+  }
+}
 
 function App() {
-  const [activeUser, setActiveUser] = useState(null);
-  const [todos, setTodos] = useState([]);
-  const [filter, setFilter] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isInitializing, setIsInitializing] = useState(true);
-  const [appError, setAppError] = useState('');
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authMode, setAuthMode] = useState('login');
+  const [currentTab, setCurrentTab] = useState('dashboard');
+  const [authError, setAuthError] = useState('');
+  const [authNotice, setAuthNotice] = useState('');
+  const [theme, setTheme] = useState(readSavedTheme);
 
   useEffect(() => {
-    let isCurrent = true;
-    const restoreSession = async () => {
-      try {
-        const { user } = await api.session();
-        const { tasks } = await api.listTasks();
-        if (isCurrent) {
-          setActiveUser(user);
-          setTodos(tasks);
-        }
-      } catch (error) {
-        const isExpectedSignedOut = error.message === 'Please sign in to continue.'
-          || error.message === 'Session expired. Please sign in again.'
-          || error.message === 'Session is no longer valid. Please sign in again.';
-        if (isCurrent && !isExpectedSignedOut) setAppError(error.message);
-      } finally {
-        if (isCurrent) setIsInitializing(false);
+    document.documentElement.dataset.theme = theme;
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch (error) {
+      console.error('Failed to save the selected theme:', error);
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((currentTheme) => (currentTheme === 'dark' ? 'light' : 'dark'));
+  };
+
+  // Sync initial authMode based on pathname
+  useEffect(() => {
+    if (location.pathname === '/admin/login') {
+      setAuthMode('admin-login');
+    } else if (location.pathname === '/signup') {
+      setAuthMode('login');
+      navigate('/login', { replace: true });
+    } else if (location.pathname === '/login') {
+      setAuthMode('login');
+    }
+  }, [location.pathname, navigate]);
+
+  // Session check on load
+  const checkSession = useCallback(async () => {
+    setAuthLoading(true);
+    try {
+      const res = await api.session();
+      if (res?.user && res.user.isActive !== false) {
+        setUser(res.user);
+        setCurrentTab('dashboard');
+      } else {
+        setUser(null);
       }
-    };
-    restoreSession();
-    return () => {
-      isCurrent = false;
-    };
+    } catch {
+      setUser(null);
+    } finally {
+      setAuthLoading(false);
+    }
   }, []);
 
-  const handleLogin = async (username, password) => {
-    const { user } = await api.login(username, password);
-    const { tasks } = await api.listTasks();
-    setActiveUser(user);
-    setTodos(tasks);
-    setAppError('');
+  useEffect(() => {
+    checkSession();
+  }, [checkSession]);
+
+  // Handle regular user / member / leader login
+  const handleLogin = async (identifier, password) => {
+    setAuthError('');
+    setAuthNotice('');
+    const res = await api.login(identifier, password);
+    if (res?.user) {
+      setUser(res.user);
+      setCurrentTab('dashboard');
+      navigate('/');
+    }
   };
 
-  const handleRegister = async (newUser) => {
-    const { user } = await api.register(newUser);
-    const { tasks } = await api.listTasks();
-    setActiveUser(user);
-    setTodos(tasks);
-    setAppError('');
+  // Handle dedicated Admin login
+  const handleAdminLogin = async (identifier, password) => {
+    setAuthError('');
+    setAuthNotice('');
+    const res = await api.login(identifier, password, true);
+    if (res?.user) {
+      if (res.user.role !== 'admin') {
+        throw new Error('This account does not have Administrator privileges. Please use the standard login.');
+      }
+      setUser(res.user);
+      setCurrentTab('dashboard');
+      navigate('/');
+    }
   };
 
+  // Handle confirmed Logout
   const handleLogout = async () => {
     try {
       await api.logout();
-      setActiveUser(null);
-      setTodos([]);
-      setAppError('');
-      setSearchQuery('');
-      setFilter('all');
-    } catch (error) {
-      setAppError(error.message);
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      setUser(null);
+      setAuthMode('login');
+      setCurrentTab('dashboard');
+      navigate('/login');
     }
   };
 
-  const handleAddTodo = async (text) => {
-    try {
-      const { task } = await api.createTask(text);
-      setTodos((previousTodos) => [task, ...previousTodos]);
-      setAppError('');
-    } catch (error) {
-      setAppError(error.message);
-    }
-  };
-
-  const handleToggleTodo = async (id) => {
-    const currentTask = todos.find((task) => task.id === id);
-    if (!currentTask) return;
-    try {
-      const { task } = await api.updateTask(id, !currentTask.completed);
-      setTodos((previousTodos) => previousTodos.map((item) => (item.id === id ? task : item)));
-      setAppError('');
-    } catch (error) {
-      setAppError(error.message);
-    }
-  };
-
-  const handleDeleteTodo = async (id) => {
-    try {
-      await api.deleteTask(id);
-      setTodos((previousTodos) => previousTodos.filter((task) => task.id !== id));
-      setAppError('');
-    } catch (error) {
-      setAppError(error.message);
-    }
-  };
-
-  const handleClearCompleted = async () => {
-    try {
-      await api.clearCompletedTasks();
-      setTodos((previousTodos) => previousTodos.filter((task) => !task.completed));
-      setAppError('');
-    } catch (error) {
-      setAppError(error.message);
-    }
-  };
-
-  // Avatar gradient helper
-  const getThemeGradient = (themeId) => {
-    const map = {
-      aurora: 'linear-gradient(135deg, #8b5cf6, #06b6d4)',
-      cyber: 'linear-gradient(135deg, #ec4899, #8b5cf6)',
-      emerald: 'linear-gradient(135deg, #10b981, #06b6d4)',
-      amber: 'linear-gradient(135deg, #f59e0b, #ef4444)',
-      sapphire: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-    };
-    return map[themeId] || map.aurora;
-  };
-
-  const getInitials = (name) => {
-    if (!name) return '??';
-    return name
-      .split(' ')
-      .map((p) => p[0])
-      .slice(0, 2)
-      .join('')
-      .toUpperCase();
-  };
-
-  // Statistics calculation
-  const totalCount = todos.length;
-  const completedCount = todos.filter((t) => t.completed).length;
-  const pendingCount = totalCount - completedCount;
-  const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
-
-  // Filtered & searched todos
-  const filteredTodos = useMemo(() => {
-    return todos.filter((todo) => {
-      // 1. Filter tab
-      if (filter === 'active' && todo.completed) return false;
-      if (filter === 'completed' && !todo.completed) return false;
-
-      // 2. Search query
-      if (searchQuery.trim()) {
-        const query = searchQuery.trim().toLowerCase();
-        return todo.text.toLowerCase().includes(query);
-      }
-      return true;
-    });
-  }, [todos, filter, searchQuery]);
-
-  if (window.location.pathname === '/tour') {
-    return <TodoTour />;
-  }
-
-  if (isInitializing) {
-    return <main className="directory-container" aria-live="polite">Connecting to your workspace…</main>;
-  }
-
-  if (!activeUser) {
+  // Loading Screen
+  if (authLoading) {
     return (
-      <ProfileDirectory
+      <div className="tf-auth-container" data-theme={theme}>
+        <ThemeToggle theme={theme} onToggleTheme={toggleTheme} />
+        <div className="tf-loading-box">
+          <div className="tf-spin" style={{ width: 36, height: 36, border: '3px solid #2563eb', borderTopColor: 'transparent', borderRadius: '50%' }} />
+          <p style={{ marginTop: 14, fontWeight: 600, color: '#475569' }}>Loading Team Task Management System…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Unauthenticated Views
+  if (!user) {
+    if (location.pathname === '/') {
+      return (
+        <WelcomePage
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onLogin={() => navigate('/login')}
+        />
+      );
+    }
+
+    if (authMode === 'admin-login') {
+      return (
+        <AdminLoginPage
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onAdminLogin={handleAdminLogin}
+          onNavigateToLogin={() => {
+            setAuthMode('login');
+            navigate('/login');
+          }}
+          error={authError}
+          notice={authNotice}
+        />
+      );
+    }
+
+    // Default: LoginPage
+    return (
+      <LoginPage
+        theme={theme}
+        onToggleTheme={toggleTheme}
         onLogin={handleLogin}
-        onRegister={handleRegister}
-        globalError={appError}
+        onNavigateHome={() => navigate('/')}
+        onNavigateToAdminLogin={() => {
+          setAuthMode('admin-login');
+          navigate('/admin/login');
+        }}
+        error={authError}
+        notice={authNotice}
       />
     );
   }
 
-  // Screen 2: Authenticated Private To-Do Dashboard
+  // Authenticated Role-Based Views
+  const role = user.role || 'team_member';
+
+  const renderRolePage = () => {
+    // 1. ADMIN ROLE
+    if (role === 'admin') {
+      switch (currentTab) {
+        case 'dashboard':
+          return <AdminDashboardPage />;
+        case 'users':
+          return <AdminUserManagerPage />;
+        case 'departments':
+          return <AdminDepartmentManagerPage />;
+        case 'audit-logs':
+          return <AdminAuditLogsPage />;
+        case 'collaboration':
+          return <AdminProjectsPage />;
+        case 'calendar':
+          return <CalendarPage role={role} />;
+        case 'search':
+          return <GlobalSearchPage role={role} />;
+        case 'reports':
+          return <ReportsAnalyticsPage role={role} user={user} />;
+        case 'activity':
+          return <ActivityTimePage role={role} />;
+        case 'meetings':
+          return <MeetingsPage user={user} />;
+        case 'profile':
+          return <ProfilePage user={user} onUserUpdated={setUser} onBack={() => setCurrentTab('dashboard')} />;
+        default:
+          return <AdminDashboardPage />;
+      }
+    }
+
+    // 2. TEAM LEADER ROLE
+    if (role === 'team_leader') {
+      switch (currentTab) {
+        case 'dashboard':
+          return <LeaderDashboardPage />;
+        case 'team':
+          return <LeaderTeamManagementPage />;
+        case 'assign-task':
+          return <LeaderAssignTaskPage />;
+        case 'tasks':
+          return <LeaderTaskTrackingPage />;
+        case 'collaboration':
+          return <LeaderCollaborationPage />;
+        case 'calendar':
+          return <CalendarPage role={role} />;
+        case 'search':
+          return <GlobalSearchPage role={role} />;
+        case 'reports':
+          return <ReportsAnalyticsPage role={role} user={user} />;
+        case 'activity':
+          return <ActivityTimePage role={role} />;
+        case 'meetings':
+          return <MeetingsPage user={user} />;
+        case 'profile':
+          return <ProfilePage user={user} onUserUpdated={setUser} onBack={() => setCurrentTab('dashboard')} />;
+        default:
+          return <LeaderDashboardPage onNavigateTab={setCurrentTab} />;
+      }
+    }
+
+    // 3. TEAM MEMBER ROLE
+    switch (currentTab) {
+      case 'dashboard':
+        return <MemberDashboardPage onNavigateTab={setCurrentTab} />;
+      case 'todo-list':
+        return <MemberTodoListPage />;
+      case 'ai-assistant':
+        return <MemberAIAssistantPage />;
+      case 'tasks':
+        return <MemberMyTasksPage />;
+      case 'collaboration':
+        return <MemberCollaborationPage />;
+      case 'acknowledgments':
+        return <MemberAcknowledgmentsPage onNavigateTab={setCurrentTab} />;
+      case 'history':
+        return <MemberTaskHistoryPage />;
+      case 'calendar':
+        return <CalendarPage role={role} />;
+      case 'search':
+        return <GlobalSearchPage role={role} />;
+      case 'reports':
+        return <ReportsAnalyticsPage role={role} user={user} />;
+      case 'activity':
+        return <ActivityTimePage role={role} />;
+      case 'meetings':
+        return <MeetingsPage user={user} />;
+      case 'profile':
+        return <ProfilePage user={user} onUserUpdated={setUser} onBack={() => setCurrentTab('dashboard')} />;
+      default:
+        return <MemberDashboardPage onNavigateTab={setCurrentTab} />;
+    }
+  };
+
   return (
-    <div className="dashboard-wrapper">
-      {/* Aurora Ambient Background Orbs */}
-      <div className="ambient-orb orb-1" aria-hidden="true" />
-      <div className="ambient-orb orb-2" aria-hidden="true" />
-      <div className="ambient-orb orb-3" aria-hidden="true" />
-
-      <main className="dashboard-card">
-        {appError && <div className="form-error-alert" role="alert">{appError}</div>}
-        {/* User Session Bar */}
-        <div className="dashboard-user-bar">
-          <div className="active-user-info">
-            <div
-              className="user-avatar-badge"
-              style={{ background: getThemeGradient(activeUser.theme) }}
-            >
-              {getInitials(activeUser.name)}
-            </div>
-            <div className="user-identity">
-              <span className="user-greeting">Authenticated Session</span>
-              <div className="user-name-line">
-                <strong className="user-full-name">{activeUser.name}</strong>
-                <span className="user-handle">@{activeUser.username}</span>
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            className="btn-lock-profile"
-            onClick={handleLogout}
-            title="Lock your profile and return to directory"
-            aria-label="Lock profile and return to directory"
-          >
-            <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true">
-              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-            </svg>
-            <span>Lock & Sign Out</span>
-          </button>
-        </div>
-
-        {/* Full Screen Dashboard Grid */}
-        <div className="dashboard-content-grid">
-          {/* Left Panel: Header, Stats & Progress */}
-          <aside className="dashboard-sidebar">
-            <header className="dashboard-header">
-              <div className="brand-pill">
-                <span className="pulse-dot" />
-                <span>PRIVATE TASK VAULT</span>
-              </div>
-              <h1 className="dashboard-title">
-                My <span className="gradient-text">Tasks</span>
-              </h1>
-              <p className="dashboard-subtitle">
-                Private workspace for {activeUser.name}. Visible only to you.
-              </p>
-            </header>
-
-            {/* Live Metrics Grid */}
-            <section className="stats-section" aria-label="Task metrics">
-              <div className="stat-card">
-                <span className="stat-value">{totalCount}</span>
-                <span className="stat-label">Total</span>
-              </div>
-              <div className="stat-card stat-pending">
-                <span className="stat-value">{pendingCount}</span>
-                <span className="stat-label">Pending</span>
-              </div>
-              <div className="stat-card stat-completed">
-                <span className="stat-value">{completedCount}</span>
-                <span className="stat-label">Completed</span>
-              </div>
-            </section>
-
-            {/* Animated Progress Bar */}
-            {totalCount > 0 && (
-              <div className="progress-container" aria-label="Completion progress">
-                <div className="progress-header">
-                  <span className="progress-text">Completion Rate</span>
-                  <span className="progress-percentage">{completionRate}%</span>
-                </div>
-                <div
-                  className="progress-track"
-                  role="progressbar"
-                  aria-valuenow={completionRate}
-                  aria-valuemin="0"
-                  aria-valuemax="100"
-                >
-                  <div
-                    className="progress-fill"
-                    style={{ width: `${completionRate}%` }}
-                  />
-                </div>
-              </div>
-            )}
-          </aside>
-
-          {/* Right Panel: Tasks Management & List */}
-          <section className="dashboard-main-panel">
-            {/* Add Task Input Form */}
-            <TodoForm onAddTodo={handleAddTodo} />
-
-            {/* Filter Navigation and Search Bar */}
-            <TodoFilter
-              filter={filter}
-              onFilterChange={setFilter}
-              counts={{ all: totalCount, active: pendingCount, completed: completedCount }}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-            />
-
-            {/* Task List / Contextual Empty State */}
-            <TodoList
-              todos={filteredTodos}
-              onToggleTodo={handleToggleTodo}
-              onDeleteTodo={handleDeleteTodo}
-              filter={filter}
-              searchQuery={searchQuery}
-            />
-
-            {/* Footer with Clear Completed */}
-            {totalCount > 0 && (
-              <footer className="dashboard-footer">
-                <span className="footer-status">
-                  {pendingCount === 0
-                    ? '🎉 All caught up! Every task completed.'
-                    : `${pendingCount} ${pendingCount === 1 ? 'task' : 'tasks'} remaining`}
-                </span>
-                {completedCount > 0 && (
-                  <button
-                    type="button"
-                    className="btn-clear-completed"
-                    onClick={handleClearCompleted}
-                    aria-label="Clear all completed tasks"
-                  >
-                    Clear completed ({completedCount})
-                  </button>
-                )}
-              </footer>
-            )}
-          </section>
-        </div>
-      </main>
-    </div>
+    <DashboardLayout
+      user={user}
+      theme={theme}
+      onToggleTheme={toggleTheme}
+      currentTab={currentTab}
+      onSelectTab={setCurrentTab}
+      onLogout={handleLogout}
+    >
+      {renderRolePage()}
+    </DashboardLayout>
   );
 }
 

@@ -1,0 +1,659 @@
+.tf-meeting-form-card,
+.tf-meeting-list-card,
+.tf-room-dashboard {
+  padding: 24px;
+}
+
+.tf-room-dashboard > .tf-card-header,
+.tf-meeting-form-card > .tf-card-header {
+  margin-bottom: 18px;
+}
+
+.tf-room-create-form {
+  margin-bottom: 22px;
+  padding: 18px;
+  border: 1px solid var(--tf-border);
+  border-radius: var(--tf-radius-md);
+  background: var(--tf-content-bg);
+}
+
+.tf-room-create-form > h4 {
+  margin: 0 0 14px;
+  color: var(--tf-text-main);
+  font-size: 14px;
+}
+
+.tf-meeting-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px;
+}
+
+.tf-meeting-form > label,
+.tf-room-announcement-form > label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--tf-text-main);
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.tf-meeting-form .tf-input,
+.tf-meeting-form .tf-select,
+.tf-meeting-form .tf-textarea,
+.tf-meeting-inline-form .tf-input,
+.tf-meeting-inline-form .tf-select,
+.tf-meeting-followup-form .tf-input,
+.tf-meeting-followup-form .tf-select,
+.tf-room-announcement-form .tf-textarea {
+  min-width: 0;
+}
+
+.tf-meeting-full-width {
+  grid-column: 1 / -1;
+}
+
+.tf-meeting-participants {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 13px;
+  border: 1px solid var(--tf-border);
+  border-radius: var(--tf-radius-md);
+}
+
+.tf-meeting-participants legend {
+  padding: 0 6px;
+  color: var(--tf-text-main);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.tf-meeting-participants > label {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+  padding: 8px;
+  border: 1px solid var(--tf-border);
+  border-radius: 8px;
+  color: var(--tf-text-main);
+  cursor: pointer;
+}
+
+.tf-meeting-participants > label input {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  accent-color: var(--tf-primary);
+}
+
+.tf-meeting-participants > label span {
+  display: grid;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tf-meeting-participants > label small {
+  overflow: hidden;
+  color: var(--tf-text-muted);
+  font-size: 10.5px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tf-meeting-participants > p {
+  grid-column: 1 / -1;
+  color: var(--tf-text-muted);
+  font-size: 12px;
+}
+
+.tf-meeting-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.tf-meeting-form-actions .tf-btn,
+.tf-meeting-actions .tf-btn {
+  gap: 7px;
+}
+
+.tf-room-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 14px;
+}
+
+.tf-room-card {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--tf-border);
+  border-radius: var(--tf-radius-lg);
+  background: var(--tf-card-bg);
+}
+
+.tf-room-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+}
+
+.tf-room-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 11px;
+  background: var(--tf-primary-light);
+  color: var(--tf-primary);
+}
+
+.tf-room-card-title {
+  min-width: 0;
+  flex: 1;
+}
+
+.tf-room-card-title h3 {
+  margin: 5px 0 2px;
+  color: var(--tf-text-main);
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+.tf-room-card-title small,
+.tf-room-purpose,
+.tf-room-meta,
+.tf-room-announcements small {
+  color: var(--tf-text-muted);
+  font-size: 11.5px;
+}
+
+.tf-room-kind,
+.tf-meeting-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tf-room-kind-team {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.tf-meeting-status-ongoing {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.tf-meeting-status-past,
+.tf-meeting-status-cancelled {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.tf-room-purpose {
+  margin: 14px 0;
+  line-height: 1.55;
+}
+
+.tf-room-meta,
+.tf-meeting-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+.tf-room-meta > span,
+.tf-meeting-meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tf-room-announcements {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 9px;
+  background: var(--tf-content-bg);
+}
+
+.tf-room-announcements > strong {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--tf-text-main);
+  font-size: 12px;
+}
+
+.tf-room-announcements > p {
+  color: var(--tf-text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.tf-room-announcements small {
+  display: block;
+  margin-top: 4px;
+}
+
+.tf-room-scheduled-meetings {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--tf-border);
+}
+
+.tf-room-scheduled-meetings > strong {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--tf-text-main);
+  font-size: 12px;
+}
+
+.tf-room-scheduled-meetings > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--tf-text-secondary);
+  font-size: 11.5px;
+}
+
+.tf-room-scheduled-meetings > div span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tf-room-scheduled-meetings small {
+  display: block;
+  margin-top: 3px;
+  color: var(--tf-text-muted);
+  font-size: 10px;
+}
+
+.tf-room-scheduled-meetings a {
+  flex: 0 0 auto;
+  color: var(--tf-primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.tf-room-manage {
+  margin-top: 12px;
+  border-top: 1px solid var(--tf-border);
+}
+
+.tf-meeting-details-toggle {
+  margin-top: 11px;
+  border: 0;
+  background: transparent;
+  color: var(--tf-primary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tf-room-manage-panel {
+  display: grid;
+  gap: 11px;
+  margin-top: 12px;
+}
+
+.tf-room-announcement-form {
+  display: grid;
+  gap: 8px;
+}
+
+.tf-room-announcement-form .tf-btn {
+  justify-self: start;
+}
+
+.tf-room-empty,
+.tf-meeting-empty {
+  display: grid;
+  min-height: 140px;
+  grid-column: 1 / -1;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  color: var(--tf-text-muted);
+  text-align: center;
+}
+
+.tf-room-empty span,
+.tf-meeting-empty span {
+  max-width: 420px;
+  font-size: 12.5px;
+}
+
+.tf-meeting-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.tf-meeting-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tf-meeting-tabs button {
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--tf-text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.tf-meeting-tabs button.active {
+  border-color: var(--tf-border);
+  background: var(--tf-content-bg);
+  color: var(--tf-text-main);
+}
+
+.tf-meeting-list {
+  display: grid;
+  gap: 13px;
+}
+
+.tf-notification-meeting {
+  cursor: pointer;
+}
+
+.tf-notification-meeting:focus-visible {
+  outline: 2px solid var(--tf-primary);
+  outline-offset: -2px;
+}
+
+.tf-notification-story {
+  cursor: pointer;
+}
+
+.tf-notification-story:focus-visible {
+  outline: 2px solid var(--tf-primary);
+  outline-offset: -2px;
+}
+
+.tf-meeting-card {
+  overflow: hidden;
+  border: 1px solid var(--tf-border);
+  border-radius: var(--tf-radius-lg);
+  background: var(--tf-card-bg);
+}
+
+.tf-meeting-card-main {
+  padding: 18px;
+}
+
+.tf-meeting-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.tf-meeting-card-heading h3 {
+  margin: 7px 0 0;
+  color: var(--tf-text-main);
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+
+.tf-meeting-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.tf-meeting-meta {
+  margin-top: 12px;
+  color: var(--tf-text-secondary);
+  font-size: 11.5px;
+}
+
+.tf-meeting-description,
+.tf-meeting-agenda p {
+  margin-top: 12px;
+  color: var(--tf-text-secondary);
+  font-size: 12.5px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.tf-meeting-agenda {
+  margin-top: 10px;
+  color: var(--tf-text-secondary);
+  font-size: 12px;
+}
+
+.tf-meeting-agenda summary {
+  color: var(--tf-primary);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.tf-meeting-organizer {
+  margin-top: 10px;
+  color: var(--tf-text-muted);
+  font-size: 11px;
+}
+
+.tf-meeting-collaboration {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  padding: 17px 18px;
+  border-top: 1px solid var(--tf-border);
+  background: var(--tf-content-bg);
+}
+
+.tf-meeting-collaboration h4 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 10px;
+  color: var(--tf-text-main);
+  font-size: 13px;
+}
+
+.tf-meeting-inline-form,
+.tf-meeting-followup-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px;
+}
+
+.tf-meeting-inline-form {
+  grid-template-columns: 100px minmax(0, 1fr) auto;
+}
+
+.tf-meeting-inline-form .tf-btn,
+.tf-meeting-followup-form .tf-btn {
+  padding: 8px 11px;
+}
+
+.tf-meeting-followup-form {
+  grid-template-columns: minmax(0, 1fr) minmax(110px, 0.75fr) minmax(110px, 0.55fr) auto;
+}
+
+.tf-meeting-entry-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.tf-meeting-entry-list > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 9px;
+  border: 1px solid var(--tf-border);
+  border-radius: 8px;
+  background: var(--tf-card-bg);
+}
+
+.tf-meeting-entry-list > li > div {
+  min-width: 0;
+}
+
+.tf-meeting-entry-list p {
+  color: var(--tf-text-main);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.tf-meeting-entry-list small {
+  display: block;
+  margin-top: 4px;
+  color: var(--tf-text-muted);
+  font-size: 10px;
+}
+
+.tf-meeting-note-type {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.tf-meeting-note-decision {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.tf-meeting-note-blocker {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.tf-meeting-check {
+  display: inline-flex;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--tf-primary);
+  cursor: pointer;
+}
+
+.tf-meeting-check:disabled {
+  cursor: wait;
+}
+
+.tf-meeting-complete p {
+  color: var(--tf-text-muted);
+  text-decoration: line-through;
+}
+
+.tf-meeting-muted {
+  margin-top: 10px;
+  color: var(--tf-text-muted);
+  font-size: 11.5px;
+}
+
+.tf-dashboard-shell[data-theme='dark'] .tf-room-icon {
+  background: #1b3154;
+  color: #bfdbfe;
+}
+
+.tf-dashboard-shell[data-theme='dark'] .tf-room-kind,
+.tf-dashboard-shell[data-theme='dark'] .tf-meeting-note-type {
+  background: #1b3154;
+  color: #bfdbfe;
+}
+
+.tf-dashboard-shell[data-theme='dark'] .tf-room-kind-team,
+.tf-dashboard-shell[data-theme='dark'] .tf-meeting-status-ongoing,
+.tf-dashboard-shell[data-theme='dark'] .tf-meeting-note-decision {
+  background: #123b35;
+  color: #a7f3d0;
+}
+
+.tf-dashboard-shell[data-theme='dark'] .tf-meeting-status-past,
+.tf-dashboard-shell[data-theme='dark'] .tf-meeting-status-cancelled {
+  background: #29384b;
+  color: #cbd5e1;
+}
+
+.tf-dashboard-shell[data-theme='dark'] .tf-meeting-note-blocker {
+  background: #4a252a;
+  color: #fecaca;
+}
+
+@media (max-width: 760px) {
+  .tf-meeting-form,
+  .tf-meeting-collaboration {
+    grid-template-columns: 1fr;
+  }
+
+  .tf-meeting-full-width {
+    grid-column: auto;
+  }
+
+  .tf-meeting-card-heading,
+  .tf-meeting-list-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .tf-meeting-actions {
+    justify-content: flex-start;
+  }
+
+  .tf-meeting-followup-form {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .tf-meeting-form-card,
+  .tf-meeting-list-card,
+  .tf-room-dashboard {
+    padding: 16px;
+  }
+
+  .tf-meeting-inline-form,
+  .tf-meeting-followup-form {
+    grid-template-columns: 1fr;
+  }
+
+  .tf-meeting-inline-form .tf-btn,
+  .tf-meeting-followup-form .tf-btn {
+    justify-self: start;
+  }
+}
