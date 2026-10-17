@@ -1,11 +1,9 @@
+
 import 'dotenv/config';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import mongoose from 'mongoose';
-import { existsSync } from 'node:fs';
-import path from 'node:path';
 import process from 'node:process';
-import { fileURLToPath } from 'node:url';
 
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
@@ -29,15 +27,50 @@ import { closeExpiredActivitySessions } from './services/activityTracking.js';
 
 const { MONGODB_URI, JWT_SECRET } = process.env;
 const PORT = Number(process.env.PORT || 4000);
-const SERVER_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
-const DIST_DIRECTORY = path.resolve(SERVER_DIRECTORY, '../dist');
-const FRONTEND_ENTRY = path.join(DIST_DIRECTORY, 'index.html');
 
 if (!MONGODB_URI || !JWT_SECRET || JWT_SECRET.length < 32) {
-  throw new Error('Set MONGODB_URI and a JWT_SECRET of at least 32 characters in .env.');
+  throw new Error(
+    'Set MONGODB_URI and a JWT_SECRET of at least 32 characters in the environment.'
+  );
 }
 
 const app = express();
+
+// Configure CORS for the deployed Vercel frontend.
+const allowedOrigins = [
+  'https://team-task-management-system-six.vercel.app',
+  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+];
+
+app.use((request, response, next) => {
+  const origin = request.headers.origin;
+
+  if (origin && allowedOrigins.includes(origin)) {
+    response.setHeader('Access-Control-Allow-Origin', origin);
+    response.setHeader('Vary', 'Origin');
+    response.setHeader('Access-Control-Allow-Credentials', 'true');
+    response.setHeader(
+      'Access-Control-Allow-Methods',
+      'GET, POST, PUT, PATCH, DELETE, OPTIONS'
+    );
+    response.setHeader(
+      'Access-Control-Allow-Headers',
+      'Content-Type, Authorization'
+    );
+  }
+
+  if (request.method === 'OPTIONS') {
+    if (origin && !allowedOrigins.includes(origin)) {
+      response.status(403).end();
+      return;
+    }
+
+    response.status(204).end();
+    return;
+  }
+
+  next();
+});
 
 app.use('/api/auth/profile', express.json({ limit: '2mb' }));
 app.use('/api/tasks', express.json({ limit: '2mb' }));
@@ -49,12 +82,14 @@ app.use(cookieParser());
 app.get('/api/health', (_request, response) => {
   response.json({
     status: 'ok',
-    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    database: mongoose.connection.readyState === 1
+      ? 'connected'
+      : 'disconnected',
     timestamp: new Date().toISOString(),
   });
 });
 
-// Standard REST endpoints for TaskFlow
+// TaskFlow API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/departments', departmentRoutes);
@@ -68,17 +103,24 @@ app.use('/api/search', searchRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/projects', projectRoutes);
 
-// Legacy and backwards-compatible routes for existing smoke tests and modules
+// Backward-compatible routes
 app.use('/api/team', requireUser, teamRoutes);
 app.use('/api/admin', requireUser, requireAdmin, adminRoutes);
 
 // AI Assistant endpoint
 app.post('/api/assistant/suggestions', requireUser, async (request, response) => {
-  const goal = typeof request.body?.goal === 'string' ? request.body.goal.trim() : '';
+  const goal =
+    typeof request.body?.goal === 'string'
+      ? request.body.goal.trim()
+      : '';
+
   if (goal.length < 3 || goal.length > 500) {
-    response.status(400).json({ error: 'Enter a goal between 3 and 500 characters.' });
+    response.status(400).json({
+      error: 'Enter a goal between 3 and 500 characters.',
+    });
     return;
   }
+
   if (!process.env.OPENAI_API_KEY) {
     response.json({
       tasks: createFallbackSuggestions(goal),
@@ -100,7 +142,8 @@ app.post('/api/assistant/suggestions', requireUser, async (request, response) =>
         input: [
           {
             role: 'developer',
-            content: 'Break the user’s goal into 3 to 6 concrete, manageable next steps. Return a JSON object with a "tasks" array. Each task must include an actionable title under 120 characters, a concise description, a priority (low, medium, or high), and an optional category.',
+            content:
+              'Break the user’s goal into 3 to 6 concrete, manageable next steps. Return a JSON object with a "tasks" array. Each task must include an actionable title under 120 characters, a concise description, a priority (low, medium, or high), and an optional category.',
           },
           { role: 'user', content: goal },
         ],
@@ -110,7 +153,10 @@ app.post('/api/assistant/suggestions', requireUser, async (request, response) =>
     });
 
     if (!upstream.ok) {
-      console.error(`AI goal breakdown request failed with HTTP ${upstream.status}.`);
+      console.error(
+        `AI goal breakdown request failed with HTTP ${upstream.status}.`
+      );
+
       response.json({
         tasks: createFallbackSuggestions(goal),
         source: 'fallback',
@@ -119,28 +165,47 @@ app.post('/api/assistant/suggestions', requireUser, async (request, response) =>
     }
 
     const payload = await upstream.json();
-    const responseText = payload.output_text || (payload.output || [])
-      .flatMap((item) => item.content || [])
-      .filter((item) => item.type === 'output_text' && typeof item.text === 'string')
-      .map((item) => item.text)
-      .join('');
-    const parsedResponse = responseText ? JSON.parse(responseText) : payload;
+
+    const responseText =
+      payload.output_text ||
+      (payload.output || [])
+        .flatMap((item) => item.content || [])
+        .filter(
+          (item) =>
+            item.type === 'output_text' &&
+            typeof item.text === 'string'
+        )
+        .map((item) => item.text)
+        .join('');
+
+    const parsedResponse = responseText
+      ? JSON.parse(responseText)
+      : payload;
+
     const tasks = Array.isArray(parsedResponse?.tasks)
-      ? parsedResponse.tasks.filter((task) => (
-        task && typeof task.title === 'string' && task.title.trim()
-      ))
+      ? parsedResponse.tasks.filter(
+          (task) =>
+            task &&
+            typeof task.title === 'string' &&
+            task.title.trim()
+        )
       : [];
+
     if (!tasks.length) {
-      console.error('AI goal breakdown returned no valid tasks; using fallback suggestions.');
       response.json({
         tasks: createFallbackSuggestions(goal),
         source: 'fallback',
       });
       return;
     }
+
     response.json({ tasks, source: 'openai' });
   } catch (error) {
-    console.error('AI assistant error, using fallback:', error);
+    console.error(
+      'AI assistant error; using fallback:',
+      error.message
+    );
+
     response.json({
       tasks: createFallbackSuggestions(goal),
       source: 'fallback',
@@ -148,67 +213,80 @@ app.post('/api/assistant/suggestions', requireUser, async (request, response) =>
   }
 });
 
-// 404 for unmatched API routes
+// 404 for unknown API endpoints
 app.use('/api', (_request, response) => {
-  response.status(404).json({ error: 'API endpoint not found.' });
+  response.status(404).json({
+    error: 'API endpoint not found.',
+  });
 });
 
-// Static assets
-app.use(express.static(DIST_DIRECTORY));
-
-// SPA catch-all fallback
-app.get('/{*path}', (request, response, next) => {
-  if (!request.accepts('html')) {
-    next();
-    return;
-  }
-  if (!existsSync(FRONTEND_ENTRY)) {
-    response
-      .status(503)
-      .type('text/plain')
-      .send('Frontend build not found. Run "npm run build", then restart the server.');
-    return;
-  }
-  response.sendFile(FRONTEND_ENTRY);
-});
-
+// Render serves the API only; Vercel serves the frontend.
 app.use((_request, response) => {
-  response.status(404).type('text/plain').send('Not found.');
+  response.status(404).json({
+    error: 'Route not found.',
+  });
 });
 
 // Global error handler
 app.use((error, _request, response, next) => {
-  console.error('API request error:', error);
+  console.error('API request error:', error.message);
+
   if (response.headersSent) {
     next(error);
     return;
   }
+
   if (error.type === 'entity.too.large') {
-    response.status(413).json({ error: 'Payload too large.' });
+    response.status(413).json({
+      error: 'Payload too large.',
+    });
     return;
   }
-  response.status(500).json({ error: 'The server could not complete the request.' });
+
+  response.status(500).json({
+    error: 'The server could not complete the request.',
+  });
 });
 
 await mongoose.connect(MONGODB_URI);
+console.log('MongoDB connected successfully.');
+
 const activitySessionCleanupInterval = setInterval(() => {
   closeExpiredActivitySessions().catch((error) => {
-    console.error('Failed to close expired activity sessions:', error);
+    console.error(
+      'Failed to close expired activity sessions:',
+      error.message
+    );
   });
 }, 60_000);
+
 activitySessionCleanupInterval.unref();
+
 closeExpiredActivitySessions().catch((error) => {
-  console.error('Failed to close expired activity sessions:', error);
+  console.error(
+    'Failed to close expired activity sessions:',
+    error.message
+  );
 });
+
 const reminderInterval = setInterval(() => {
   sendMeetingReminders().catch((error) => {
-    console.error('Failed to send meeting reminders:', error);
+    console.error(
+      'Failed to send meeting reminders:',
+      error.message
+    );
   });
 }, 60_000);
+
 reminderInterval.unref();
+
 sendMeetingReminders().catch((error) => {
-  console.error('Failed to send meeting reminders:', error);
+  console.error(
+    'Failed to send meeting reminders:',
+    error.message
+  );
 });
-app.listen(PORT, () => {
-  console.log(`TaskFlow Server listening on http://localhost:${PORT}`);
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`TaskFlow API listening on port ${PORT}`);
 });
