@@ -1,8 +1,16 @@
+
 import { useState } from 'react';
 
 function AuthPanel({
-  onLogin, onRegister, onBack, onSwitchMode, onAdminLogin,
-  initialMode = 'login', loginRole, error, notice,
+  onLogin,
+  onRegister,
+  onBack,
+  onSwitchMode,
+  onAdminLogin,
+  initialMode = 'login',
+  loginRole,
+  error,
+  notice,
 }) {
   const [mode, setMode] = useState(initialMode);
   const [name, setName] = useState('');
@@ -22,18 +30,23 @@ function AuthPanel({
 
   const changeMode = (nextMode) => {
     switchMode(nextMode);
-    onSwitchMode(nextMode);
+
+    if (onSwitchMode) {
+      onSwitchMode(nextMode);
+    }
   };
 
   const submit = async (event) => {
     event.preventDefault();
     setFormError('');
     setSubmitting(true);
+
     try {
       if (mode === 'register') {
         if (password !== confirmPassword) {
           throw new Error('Passwords do not match.');
         }
+
         await onRegister({
           name,
           username,
@@ -44,7 +57,9 @@ function AuthPanel({
         await onLogin(identifier, password);
       }
     } catch (submitError) {
-      setFormError(submitError.message);
+      setFormError(
+        submitError?.message || 'Something went wrong. Please try again.'
+      );
     } finally {
       setSubmitting(false);
     }
@@ -52,18 +67,37 @@ function AuthPanel({
 
   return (
     <section className="auth-card" aria-labelledby="auth-title">
-      <button type="button" className="auth-back-button" onClick={onBack}>
+      <button
+        type="button"
+        className="auth-back-button"
+        onClick={onBack}
+      >
         <span aria-hidden="true">←</span> Back
       </button>
+
       <header className="auth-header">
-        <span className="app-eyebrow">{loginRole === 'Admin' ? 'SYSTEM MANAGEMENT' : loginRole ? 'TEAM LOGIN' : 'YOUR TASK SPACE'}</span>
+        <span className="app-eyebrow">
+          {loginRole === 'Admin'
+            ? 'SYSTEM MANAGEMENT'
+            : loginRole
+              ? 'TEAM LOGIN'
+              : 'YOUR TASK SPACE'}
+        </span>
+
         <h1 id="auth-title">
-          {mode === 'register' ? 'Create your account' : loginRole ? `${loginRole} Login` : 'Welcome back'}
+          {mode === 'register'
+            ? 'Create your account'
+            : loginRole
+              ? `${loginRole} Login`
+              : 'Welcome back'}
         </h1>
+
         <p>
           {mode === 'register'
             ? 'New accounts start with the Team Member role.'
-            : loginRole ? 'Sign in with your existing account.' : 'Log in to continue to your task dashboard.'}
+            : loginRole
+              ? 'Sign in with your existing account.'
+              : 'Log in to continue to your task dashboard.'}
         </p>
       </header>
 
@@ -73,6 +107,7 @@ function AuthPanel({
             <label>
               Full name
               <input
+                type="text"
                 autoComplete="name"
                 maxLength={80}
                 value={name}
@@ -80,9 +115,11 @@ function AuthPanel({
                 required
               />
             </label>
+
             <label>
               Username
               <input
+                type="text"
                 autoComplete="username"
                 minLength={3}
                 maxLength={30}
@@ -93,6 +130,7 @@ function AuthPanel({
                 required
               />
             </label>
+
             <label>
               Email
               <input
@@ -104,23 +142,12 @@ function AuthPanel({
                 required
               />
             </label>
-            <label>
-              Confirm password
-              <input
-                type="password"
-                autoComplete="new-password"
-                minLength={8}
-                maxLength={100}
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                required
-              />
-            </label>
           </>
         ) : (
           <label>
             Username or email
             <input
+              type="text"
               autoComplete="username"
               value={identifier}
               onChange={(event) => setIdentifier(event.target.value)}
@@ -131,21 +158,31 @@ function AuthPanel({
 
         <label>
           Password
+
           <span className="password-input-wrap">
             <input
               type={showPassword ? 'text' : 'password'}
-              autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+              autoComplete={
+                mode === 'register'
+                  ? 'new-password'
+                  : 'current-password'
+              }
               minLength={mode === 'register' ? 8 : undefined}
               maxLength={100}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
             />
+
             <button
               type="button"
               className="password-visibility-toggle"
-              onClick={() => setShowPassword((visible) => !visible)}
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              onClick={() =>
+                setShowPassword((visible) => !visible)
+              }
+              aria-label={
+                showPassword ? 'Hide password' : 'Show password'
+              }
               aria-pressed={showPassword}
             >
               {showPassword ? (
@@ -161,37 +198,103 @@ function AuthPanel({
               )}
             </button>
           </span>
-          {mode === 'register' && <span className="auth-help">Use at least 8 characters.</span>}
+
+          {mode === 'register' && (
+            <span className="auth-help">
+              Use at least 8 characters.
+            </span>
+          )}
         </label>
 
-        {(formError || error) && (
-          <p className="auth-error" role="alert">{formError || error}</p>
+        {mode === 'register' && (
+          <label>
+            Confirm password
+            <input
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              maxLength={100}
+              value={confirmPassword}
+              onChange={(event) =>
+                setConfirmPassword(event.target.value)
+              }
+              required
+            />
+          </label>
         )}
-        {notice && <p className="auth-notice" role="status">{notice}</p>}
 
-        <button type="submit" className="auth-submit" disabled={submitting}>
-          {submitting ? 'Please wait…' : mode === 'register' ? 'Create account' : 'Log in'}
+        {(formError || error) && (
+          <p className="auth-error" role="alert">
+            {formError || error}
+          </p>
+        )}
+
+        {notice && (
+          <p className="auth-notice" role="status">
+            {notice}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          className="auth-submit"
+          disabled={submitting}
+        >
+          {submitting
+            ? 'Please wait…'
+            : mode === 'register'
+              ? 'Create account'
+              : 'Log in'}
         </button>
       </form>
+
       <div className="auth-alternate-actions">
-        {mode === 'login' && !loginRole && (
+        {mode === 'login' && (
           <>
-            <p>Don&apos;t have an account? <button type="button" onClick={() => changeMode('register')}>Sign up</button></p>
-            <div className="auth-admin-access">
-              <strong>Are you an Admin?</strong>
-              <button type="button" onClick={onAdminLogin}>Admin Login</button>
-            </div>
-            <p>Team account? <button type="button" onClick={onBack}>Choose team role</button></p>
+            <p>
+              Don't have an account?{' '}
+              <button
+                type="button"
+                onClick={() => changeMode('register')}
+              >
+                Sign Up
+              </button>
+            </p>
+
+            {!loginRole && (
+              <>
+                <div className="auth-admin-access">
+                  <strong>Are you an Admin?</strong>
+
+                  <button
+                    type="button"
+                    onClick={onAdminLogin}
+                  >
+                    Admin Login
+                  </button>
+                </div>
+
+                <p>
+                  Team account?{' '}
+                  <button type="button" onClick={onBack}>
+                    Choose team role
+                  </button>
+                </p>
+              </>
+            )}
           </>
         )}
-        {loginRole && mode === 'login' && loginRole !== 'Admin' && (
-          <p>Don&apos;t have an account? <button type="button" onClick={() => changeMode('register')}>Sign up</button></p>
-        )}
-        {loginRole === 'Admin' && mode === 'login' && (
-          <p>First-time setup? <button type="button" onClick={() => changeMode('register')}>Create the initial Admin account</button></p>
-        )}
+
         {mode === 'register' && (
-          <p>Already have an account? <button type="button" onClick={() => changeMode('login')}>Log in</button></p>
+          <p>
+            Already have an account?{' '}
+            <button
+              type="button"
+              onClick={() => changeMode('login')}
+            >
+              Log in
+            </button>
+          </p>
         )}
       </div>
     </section>
