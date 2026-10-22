@@ -2564,6 +2564,15 @@ body {
   color: var(--tf-text-secondary);
 }
 
+.tf-auth-switch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  color: var(--tf-text-secondary);
+  margin-bottom: 20px;
+}
+
 .tf-link-btn {
   background: transparent;
   border: none;

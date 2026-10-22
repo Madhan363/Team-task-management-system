@@ -3,7 +3,7 @@ import ThemeToggle from './ThemeToggle';
 
 const TOUR_DURATION = 15;
 
-function WelcomePage({ onLogin, theme, onToggleTheme }) {
+function WelcomePage({ onLogin, onSignup, theme, onToggleTheme }) {
   const [playing, setPlaying] = useState(true);
   const [seconds, setSeconds] = useState(0);
   const step = Math.min(Math.floor(seconds / 5), 2);
@@ -44,7 +44,8 @@ function WelcomePage({ onLogin, theme, onToggleTheme }) {
         </a>
         <nav className="welcome-nav-actions" aria-label="Account">
           <ThemeToggle theme={theme} onToggleTheme={onToggleTheme} />
-          <button type="button" className="welcome-nav-cta" onClick={onLogin}>Log in</button>
+          <button type="button" className="welcome-nav-login" onClick={onLogin}>Log in</button>
+          <button type="button" className="welcome-nav-cta" onClick={onSignup}>Sign up</button>
         </nav>
       </header>
 
@@ -57,6 +58,10 @@ function WelcomePage({ onLogin, theme, onToggleTheme }) {
             Give every task a clear owner and a visible next step.
           </p>
           <p className="welcome-reassurance">Role-based workspaces for Admins, Team Leaders, and Team Members.</p>
+          <div className="welcome-hero-cta">
+            <button type="button" className="welcome-cta-primary" onClick={onSignup}>Get Started</button>
+            <button type="button" className="welcome-cta-secondary" onClick={onLogin}>Log in</button>
+          </div>
         </div>
 
         <section className="welcome-tour" aria-label="Team task management preview">

@@ -6,6 +6,7 @@ import DashboardLayout from './layouts/DashboardLayout';
 import WelcomePage from './components/WelcomePage';
 import LoginPage from './pages/auth/LoginPage';
 import AdminLoginPage from './pages/auth/AdminLoginPage';
+import SignupPage from './pages/auth/SignupPage';
 
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminUserManagerPage from './pages/admin/AdminUserManagerPage';
@@ -80,8 +81,7 @@ function App() {
     if (location.pathname === '/admin/login') {
       setAuthMode('admin-login');
     } else if (location.pathname === '/signup') {
-      setAuthMode('login');
-      navigate('/login', { replace: true });
+      setAuthMode('signup');
     } else if (location.pathname === '/login') {
       setAuthMode('login');
     }
@@ -108,6 +108,16 @@ function App() {
   useEffect(() => {
     checkSession();
   }, [checkSession]);
+
+  // Handle new user self-registration (creates first Admin or personal account)
+  const handleSignup = async (account) => {
+    setAuthError('');
+    setAuthNotice('');
+    await api.signup(account);
+    setAuthNotice('Account created! Please sign in.');
+    setAuthMode('login');
+    navigate('/login');
+  };
 
   // Handle regular user / member / leader login
   const handleLogin = async (identifier, password) => {
@@ -171,6 +181,10 @@ function App() {
           theme={theme}
           onToggleTheme={toggleTheme}
           onLogin={() => navigate('/login')}
+          onSignup={() => {
+            setAuthMode('signup');
+            navigate('/signup');
+          }}
         />
       );
     }
@@ -191,6 +205,22 @@ function App() {
       );
     }
 
+    if (authMode === 'signup') {
+      return (
+        <SignupPage
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onSignup={handleSignup}
+          onNavigateToLogin={() => {
+            setAuthMode('login');
+            navigate('/login');
+          }}
+          error={authError}
+          notice={authNotice}
+        />
+      );
+    }
+
     // Default: LoginPage
     return (
       <LoginPage
@@ -198,6 +228,10 @@ function App() {
         onToggleTheme={toggleTheme}
         onLogin={handleLogin}
         onNavigateHome={() => navigate('/')}
+        onNavigateToSignup={() => {
+          setAuthMode('signup');
+          navigate('/signup');
+        }}
         onNavigateToAdminLogin={() => {
           setAuthMode('admin-login');
           navigate('/admin/login');

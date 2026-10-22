@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Eye, EyeOff, LogIn, Shield, AlertCircle, ArrowRight, ArrowLeft } from 'lucide-react';
 import ThemeToggle from '../../components/ThemeToggle';
 
-function LoginPage({ onLogin, onNavigateHome, onNavigateToAdminLogin, error, notice, theme, onToggleTheme }) {
+function LoginPage({ onLogin, onNavigateHome, onNavigateToAdminLogin, onNavigateToSignup, error, notice, theme, onToggleTheme }) {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -126,6 +126,16 @@ function LoginPage({ onLogin, onNavigateHome, onNavigateToAdminLogin, error, not
         </form>
 
         <div className="tf-auth-footer">
+          <div className="tf-auth-switch">
+            <span>Don&apos;t have an account?</span>
+            <button
+              type="button"
+              className="tf-link-btn"
+              onClick={onNavigateToSignup}
+            >
+              Sign up
+            </button>
+          </div>
           <div className="tf-admin-login-cta">
             <div className="tf-admin-cta-divider">
               <span>ADMINISTRATIVE PORTAL</span>
